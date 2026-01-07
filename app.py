@@ -5,7 +5,6 @@ from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import os
 
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 app = FastAPI()
 
