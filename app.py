@@ -3,12 +3,16 @@ from pydantic import BaseModel
 from langchain_ollama import OllamaLLM
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
+import os
+
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 app = FastAPI()
 
 origins = [
     "http://localhost",
     "http://127.0.0.1:5500",
+    "https://capy-ai-api.onrender.com"
 ]
 
 app.add_middleware(
