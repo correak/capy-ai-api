@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_groq import ChatGroq
 import os
+import asyncio
 
 
 app = FastAPI()
