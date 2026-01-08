@@ -5,9 +5,7 @@ from langchain_groq import ChatGroq
 import os
 import asyncio
 
-# -----------------------------
-# APP
-# -----------------------------
+
 app = FastAPI()
 
 app.add_middleware(
@@ -18,18 +16,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# -----------------------------
-# LLM
-# -----------------------------
+
 llm = ChatGroq(
     model="llama-3.1-8b-instant",
     temperature=0.5,
     api_key=os.getenv("GROQ_API_KEY")
 )
 
-# -----------------------------
-# CONTEXTOS
-# -----------------------------
+
 CONTEXTOS = {
     "plan": "Planes disponibles:\n- **Gratis**: funciones básicas para empezar\n- **Pro**: herramientas avanzadas para crecer",
     "precio": "El plan **Pro** cuesta S/. 60 al mes. El plan **Gratis** no tiene costo.",
@@ -39,16 +33,12 @@ CONTEXTOS = {
     "caso de uso": "Ideal para negocios que venden en tienda física, online o por WhatsApp."
 }
 
-# -----------------------------
-# MODELO REQUEST
-# -----------------------------
+
 class ChatRequest(BaseModel):
     question: str
     history: list[str] = []
 
-# -----------------------------
-# HELPERS
-# -----------------------------
+
 def extraer_nombre(history: list[str]):
     for h in history:
         if h.startswith("Usuario:"):
@@ -60,9 +50,7 @@ def extraer_nombre(history: list[str]):
 def saludo_ya_realizado(history: list[str]):
     return any("¿Cómo te llamas" in h for h in history)
 
-# -----------------------------
-# ENDPOINTS
-# -----------------------------
+
 @app.get("/")
 def home():
     return {"message": "Backend's ready to use"}
@@ -75,11 +63,11 @@ async def chat(req: ChatRequest):
         if not user_question:
             return {"reply": "¿Me repites eso porfa?", "history": req.history}
 
-        # Estado
+        # 
         nombre_usuario = extraer_nombre(req.history)
         saludo_hecho = saludo_ya_realizado(req.history)
 
-        # Normalizar "qué es"
+        # 
         if user_question.lower() in ["que es", "qué es", "q es"]:
             user_question = "¿Qué es Capy Ventas?"
 
@@ -92,9 +80,7 @@ async def chat(req: ChatRequest):
 
         chat_history_text = "\n".join(req.history)
 
-        # -----------------------------
-        # PROMPT FINAL
-        # -----------------------------
+####promt
         prompt = f"""
 Eres CapyBot solo tienes ese nombre, un asistente virtual cercano y humano.
 
@@ -107,12 +93,27 @@ REGLAS IMPORTANTES:
 - Si el nombre es conocido, úsalo naturalmente.
 - No repitas preguntas innecesarias.
 - Responde directo a lo que el usuario pregunta.
-- Puedes usar máximo 1 emoji si aporta cercanía.
+- Puedes usar emojis para tener más cercanía con los usuarios.
 - Cuando listes información:
   - Usa listas numeradas (1., 2., 3.)
   - Deja una línea en blanco entre bloques
 - Usa **negrita** para títulos y palabras clave
 - Nunca escribas todo en un solo párrafo
+- Responde SOLO a lo que el usuario pregunta.
+- No agregues introducciones innecesarias.
+- No hagas preguntas si el usuario ya fue claro.
+- Si el usuario escribe con errores (“gartuito”), entiendes el mensaje sin corregirlo.
+- Usa frases cortas y claras.
+- NO menciones planes, precios, módulos ni beneficios si el usuario no los pidió.
+- Si pregunta por un plan específico, hablas SOLO de ese plan.
+- Si muestra interés, guías suavemente a una acción (probar gratis o hablar con un asesor), sin presión.
+
+Ejemplo correcto:
+“Este **plan gratuito** te permite usar lo básico sin costo. Si quieres, puedes empezar ahora mismo.”
+-Si el usuario hace preguntas fuera de contexto que no este relacionada a capyventas, responde que no tienes esa información.
+Ejemplo incorrecto:
+“Lo siento, no tengo información sobre eso.”
+- al final incita al uuario a registrarse a capyventas mediante este link http://localhost/capy-ventas/pos/login
 
 ESTILO:
 - Conversacional
