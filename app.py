@@ -1,19 +1,17 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from langchain_ollama import OllamaLLM
 from fastapi.middleware.cors import CORSMiddleware
-import asyncio
+from langchain_groq import ChatGroq
 import os
 
 
 app = FastAPI()
 
 origins = [
-    "http://localhost:5500",   # 
-    "http://127.0.0.1:5500",
     "http://localhost",
+    "http://localhost:5500",
     "http://127.0.0.1",
-    "https://capy-ai-api.onrender.com" 
+    "http://127.0.0.1:5500"
 ]
 
 app.add_middleware(
@@ -24,12 +22,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-llm = OllamaLLM(
-    model="mistral",
-    temperature=0.5
+llm = ChatGroq(
+    model="llama3-8b-8192",
+    temperature=0.5,
+    api_key=os.getenv("GROQ_API_KEY")
 )
-
 
 CONTEXTOS = {
     "funcionalidades": "- POS (punto de venta), CRM (gestión de clientes), Inventarios, Analítica de ventas, API y administración multi-negocio.",
