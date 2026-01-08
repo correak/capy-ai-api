@@ -24,10 +24,11 @@ app.add_middleware(
 )
 
 llm = ChatGroq(
-    model="llama3-8b-8192",
+    model="llama-3.1-8b-instant",
     temperature=0.5,
     api_key=os.getenv("GROQ_API_KEY")
 )
+
 
 CONTEXTOS = {
     "funcionalidades": "- POS (punto de venta), CRM (gestión de clientes), Inventarios, Analítica de ventas, API y administración multi-negocio.",
