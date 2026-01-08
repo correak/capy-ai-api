@@ -5,15 +5,10 @@ from langchain_groq import ChatGroq
 import os
 import asyncio
 
-
+# -----------------------------
+# APP
+# -----------------------------
 app = FastAPI()
-
-origins = [
-    "http://localhost",
-    "http://localhost:5500",
-    "http://127.0.0.1",
-    "http://127.0.0.1:5500"
-]
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,171 +18,137 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# -----------------------------
+# LLM
+# -----------------------------
 llm = ChatGroq(
     model="llama-3.1-8b-instant",
     temperature=0.5,
     api_key=os.getenv("GROQ_API_KEY")
 )
 
-
+# -----------------------------
+# CONTEXTOS
+# -----------------------------
 CONTEXTOS = {
-    "funcionalidades": "- POS (punto de venta), CRM (gestión de clientes), Inventarios, Analítica de ventas, API y administración multi-negocio.",
-    "planes": "- Gratis: S/.0 / mes\n- Pro: S/.60 / mes\n Pagos mensuales o anuales con descuentos.",
-    "beneficios": "- +43% crecimiento ingresos\n- -28% quiebres de stock\n- Soporte 24/7",
-    "clientes": "Retail Vision, Gourmet Factory, Luna Moda, TechCare",
-    "contacto": "Correo: soporte@capyventas.com | Tel: +52 (55) 8000 1234",
-    "casos_uso": "Tiendas retail físicas y online que necesitan controlar ventas e inventarios., Restaurantes y cafeterías con alto volumen de transacciones, Emprendimientos que buscan profesionalizar sus ventas., Empresas con múltiples sucursales que necesitan control centralizado., Negocios que venden por redes sociales y WhatsApp",
-    "tipo_empresa": "Micro y pequeñas empresas en crecimiento\n- PYMEs que necesitan escalar",
-    "incentivo": "Implementación rápida sin cononimientos técnicos, Plan gratuito para probar\n- Acompañamiento de especialistas\n- Mejora inmediata del control y ventas",
-    "acciones disponibles": "Inicia gratis\n Habla con un especialista\n soy cliente"
+    "plan": "Planes disponibles:\n- **Gratis**: funciones básicas para empezar\n- **Pro**: herramientas avanzadas para crecer",
+    "precio": "El plan **Pro** cuesta S/. 60 al mes. El plan **Gratis** no tiene costo.",
+    "beneficio": "Mejora el control de ventas, reduce errores y ahorra tiempo.",
+    "cliente": "Empresas de retail, restaurantes y emprendimientos en crecimiento.",
+    "funcionalidad": "POS, CRM, inventarios, reportes y control multi-sucursal.",
+    "caso de uso": "Ideal para negocios que venden en tienda física, online o por WhatsApp."
 }
 
-
+# -----------------------------
+# MODELO REQUEST
+# -----------------------------
 class ChatRequest(BaseModel):
     question: str
-    history: list[str] = []  # historial de mensajes previos del usuario y bot
+    history: list[str] = []
 
+# -----------------------------
+# HELPERS
+# -----------------------------
+def extraer_nombre(history: list[str]):
+    for h in history:
+        if h.startswith("Usuario:"):
+            posible = h.replace("Usuario:", "").strip()
+            if 1 <= len(posible.split()) <= 2:
+                return posible
+    return None
 
+def saludo_ya_realizado(history: list[str]):
+    return any("¿Cómo te llamas" in h for h in history)
+
+# -----------------------------
+# ENDPOINTS
+# -----------------------------
 @app.get("/")
 def home():
-    return {"status": "Capy AI API activa"}
-
+    return {"message": "Backend's ready to use"}
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
     try:
         user_question = req.question.strip()
+
         if not user_question:
-            return {"reply": "Hola! ¿En qué puedo ayudarte hoy?", "history": []}
+            return {"reply": "¿Me repites eso porfa?", "history": req.history}
 
-        # analiza si existen palabras clave en cadaa pregunta
-        keywords = ["plan", "precio", "beneficio", "cliente", "funcionalidad", "caso de uso"]
+        # Estado
+        nombre_usuario = extraer_nombre(req.history)
+        saludo_hecho = saludo_ya_realizado(req.history)
+
+        # Normalizar "qué es"
+        if user_question.lower() in ["que es", "qué es", "q es"]:
+            user_question = "¿Qué es Capy Ventas?"
+
+        # Contexto por keywords
         context_to_use = ""
-        for key in keywords:
-            if key.lower() in user_question.lower():
-                context_to_use = CONTEXTOS.get(key, "")
-                break  
+        for key in CONTEXTOS:
+            if key in user_question.lower():
+                context_to_use = CONTEXTOS[key]
+                break
 
-        # construye un historial de conversacion
         chat_history_text = "\n".join(req.history)
 
+        # -----------------------------
+        # PROMPT FINAL
+        # -----------------------------
         prompt = f"""
-Eres CapyBot, el asistente virtual de Capy Ventas.
-Tu objetivo es conversar de forma natural, cercana y humana, como un amigo que conoce bien la plataforma y quiere ayudar sin presionar.
+Eres CapyBot, un asistente virtual cercano y humano.
 
-────────────────────
- PERSONALIDAD
-────────────────────
-- Eres amable, fresco y empático.
-- Te adaptas al tono del usuario:
-  - Si dice “holi”, responde informal y cercano.
-  - Si dice “hola” o “buenas tardes”, responde neutral o formal.
-- No suenas corporativo ni robótico.
-- Hablas claro, simple y directo.
-- Usas emojis solo cuando aportan calidez (máx. 1 por mensaje).
+ESTADO:
+- Nombre del usuario: {nombre_usuario if nombre_usuario else "Desconocido"}
+- Saludo inicial ya ocurrió: {saludo_hecho}
 
-────────────────────
- SALUDO INICIAL
-────────────────────
-- El PRIMER mensaje debe ser UNA sola frase corta.
-- Solo pide el nombre del usuario.
-- No menciones la empresa ni tu rol en exceso.
+REGLAS IMPORTANTES:
+- Si el saludo ya ocurrió, NO vuelvas a saludar.
+- Si el nombre es conocido, úsalo naturalmente.
+- No repitas preguntas innecesarias.
+- Responde directo a lo que el usuario pregunta.
+- Puedes usar máximo 1 emoji si aporta cercanía.
 
-Ejemplos válidos:
-- “¡Hola! ¿Cómo te llamas? 😊”
-- “¡Hey! ¿Con quién tengo el gusto?”
-- “Hola, ¿me dices tu nombre por favor?”
+ESTILO:
+- Conversacional
+- Claro
+- Natural
+- Nada robótico
 
- Ejemplos NO válidos:
-- “Hola, soy CapyBot…”
-- “Estoy aquí para ayudarte…”
-- “¿Cómo puedo ayudarte hoy?”
-
-────────────────────
- MEMORIA Y CONTEXTO
-────────────────────
-- Recuerdas el nombre del usuario y lo usas naturalmente.
-- No vuelves a saludar ni a presentarte después del inicio.
-- No repites preguntas que el usuario ya respondió.
-- Mantienes el hilo de la conversación siempre.
-
-────────────────────
- FORMA DE RESPONDER
-────────────────────
-- Responde SOLO a lo que el usuario pregunta.
-- No agregues introducciones innecesarias.
-- No hagas preguntas si el usuario ya fue claro.
-- Si el usuario escribe con errores (“gartuito”), entiendes el mensaje sin corregirlo.
-- Usa frases cortas y claras.
-- Resalta palabras clave en **negrita** cuando ayude a la comprensión.
-
-────────────────────
- CONTENIDO
-────────────────────
-- NO menciones planes, precios, módulos ni beneficios si el usuario no los pidió.
-- Si pregunta por un plan específico, hablas SOLO de ese plan.
-- Si muestra interés, guías suavemente a una acción (probar gratis o hablar con un asesor), sin presión.
-
-Ejemplo correcto:
-“Este **plan gratuito** te permite usar lo básico sin costo. Si quieres, puedes empezar ahora mismo.”
-
-────────────────────
-ESTILO HUMANO
-────────────────────
-- Suenas como una conversación real de chat.
-- Puedes usar expresiones naturales:
-  - “Claro”
-  - “Buen punto”
-  - “Te explico”
-  - “Tranqui”
-- No enumeres reglas.
-- No reinicies la conversación nunca.
-
-────────────────────
- RESTRICCIONES
-────────────────────
-- No inventes información.
-- No contradigas respuestas anteriores.
-- No cambies de tema sin motivo.
-- No actúes como formulario.
-
-
-
-HISTORIAL DE CONVERSACIÓN:
+HISTORIAL:
 {chat_history_text}
 
-PREGUNTA DEL USUARIO:
+PREGUNTA:
 {user_question}
 
-INFORMACIÓN DE CONTEXTO (solo si aplica):
+CONTEXTO (si aplica):
 {context_to_use}
 
 RESPUESTA:
 """
 
-        # llamaa al modelo
         respuesta_obj = await asyncio.to_thread(llm.invoke, prompt)
 
-        # obtiene una respuesta
-        if isinstance(respuesta_obj, str):
-            reply_text = respuesta_obj.strip()
-        elif hasattr(respuesta_obj, "content"):
+        if hasattr(respuesta_obj, "content"):
             reply_text = respuesta_obj.content.strip()
         else:
             reply_text = str(respuesta_obj).strip()
 
         if not reply_text:
-            reply_text = "Lo siento, no pude procesar tu pregunta."
+            reply_text = "No te entendí bien, ¿me explicas un poquito más?"
 
-        # Actualizar historial
-        new_history = req.history + [f"Usuario: {user_question}", f"CapyBot: {reply_text}"]
+        new_history = req.history + [
+            f"Usuario: {user_question}",
+            f"CapyBot: {reply_text}"
+        ]
 
-        return {"reply": reply_text, "history": new_history}
+        return {
+            "reply": reply_text,
+            "history": new_history
+        }
 
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail="Ocurrió un error al procesar tu solicitud: " + str(e)
+            detail=f"Ocurrió un error: {str(e)}"
         )
-
-        
