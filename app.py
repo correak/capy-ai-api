@@ -81,7 +81,7 @@ async def chat(req: ChatRequest):
             return {"reply": "¿Me repites eso porfa?", "history": req.history}
 
         nombre_usuario = extraer_nombre(user_question)
-        saludo_hecho = saludo_ya_realizado(req.history)
+        ##saludo_hecho = saludo_ya_realizado(req.history)
 
         # 
         idioma = "en" if detect(user_question) == "en" else "es"
