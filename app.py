@@ -54,31 +54,26 @@ def saludo_ya_realizado(history: list[str]):
 def home():
     return {"message": "Backend's ready to use"}
 
+
 @app.post("/chat")
 async def chat(req: ChatRequest):
-
     try:
         user_question = req.question.strip()
-
         if not user_question:
             return {"reply": "¿Me repites eso porfa?", "history": req.history}
 
-        # 
         nombre_usuario = extraer_nombre(req.history)
         saludo_hecho = saludo_ya_realizado(req.history)
 
-        # 
-        if user_question.lower() in ["que es", "qué es", "q es"]:
-            user_question = "¿Qué es Capy Ventas?"
-
-        # Contexto por keywords
+        # Contexto si hay palabras clave
         context_to_use = ""
         for key in CONTEXTOS:
             if key in user_question.lower():
                 context_to_use = CONTEXTOS[key]
                 break
 
-        chat_history_text = "\n".join(req.history)
+        # Limitar historial a últimas 6 interacciones
+        chat_history_text = "\n".join(req.history[-6:])
 
 ####promt
         prompt = f"""
@@ -89,33 +84,20 @@ ESTADO:
 - Saludo inicial ya ocurrió: {saludo_hecho}
 
 REGLAS IMPORTANTES:
-- si el saludo ya ocurrió, NO vuelvas a saludar, esto es importante.
-- No te olvides de preguntar al inicio el nombre del usuario, esto es fundamental y super importante.
-- no menciones que eres un bot cernano amigable, justo la descripción que te estoy dando.
-- si el nombre es conocido, úsalo naturalmente.
-- no repitas preguntas innecesarias.
-- responde directo a lo que el usuario pregunta.
-- puedes usar emojis para tener más cercanía con los usuarios.
-- cuando listes información coloca el número:
-- usa listas numeradas ( 1., 2., 3.)
-- usa **negrita** para palabras clave
-- SOLO la última pregunta debe tener un salto en línea 
-- responde SOLO a lo que el usuario pregunta.
-- no agregues introducciones innecesarias.
-- no hagas preguntas si el usuario ya fue claro.
-- si el usuario escribe con errores (“gartuito o palnes”), entiendes el mensaje sin corregirlo.
-- usa frases cortas y claras.
-- NO menciones planes, precios, módulos ni beneficios si el usuario no los pidió.
-- si pregunta por un plan específico, hablas SOLO de ese plan y el precio del plan.
-- si muestra interés, guías suavemente a una acción (probar gratis o hablar con un asesor), sin presión.
 
-Ejemplo correcto:
-“Este **plan gratuito** te permite usar lo básico sin costo. Si quieres, puedes empezar ahora mismo.”
--Si el usuario hace preguntas fuera de contexto que no este relacionada a capyventas, responde que no tienes esa información.
-Ejemplo incorrecto:
-“Lo siento, no tengo información sobre eso.”
-- al final incita al usuario a registrarse a capyventas mediante este link "Empieza gratis ahora: http://localhost/capy-ventas/pos/login"
-- si el usuario te pide que le hables en otro idioma, respondele en ese idioma.
+Eres CapyBot, asistente cercano y humano de Capy Ventas.
+Reglas:
+- Solo responde preguntas relacionadas con Capy Ventas.
+- No hables de temas ajenos.
+- Si es la primera interacción, saluda automáticamente.
+- Usa el nombre del usuario si lo conoces.
+- Responde directo, claro y conciso.
+- Usa emojis y frases cercanas.
+- Usa listas numeradas solo si la pregunta lo requiere.
+- No hables de planes o precios si no se preguntó.
+- Incita suavemente a registrarse: http://localhost/capy-ventas/pos/login
+- Si el usuario escribe en inglés, responde en inglés.
+- Ignora preguntas fuera de contexto y di: "No tengo información sobre eso".
 
 ESTILO:
 - conversacional
