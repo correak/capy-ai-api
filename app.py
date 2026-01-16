@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_groq import ChatGroq
+from langdetect import detect 
 import os
 import asyncio
 
@@ -37,7 +38,6 @@ class ChatRequest(BaseModel):
     question: str
     history: list[str] = []
 
-
 def extraer_nombre(history: list[str]):
     for h in history:
         if h.startswith("Usuario:"):
@@ -47,13 +47,11 @@ def extraer_nombre(history: list[str]):
     return None
 
 def saludo_ya_realizado(history: list[str]):
-    return any("¿Cómo te llamas" in h for h in history)
-
+    return any("Hola" in h or "Hi" in h for h in history)
 
 @app.get("/")
 def home():
     return {"message": "Backend's ready to use"}
-
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
@@ -65,66 +63,67 @@ async def chat(req: ChatRequest):
         nombre_usuario = extraer_nombre(req.history)
         saludo_hecho = saludo_ya_realizado(req.history)
 
-        # Detectar idioma
+        # 1️⃣ Detectar idioma
         idioma = "en" if detect(user_question) == "en" else "es"
 
-        # Contexto si hay palabras clave
+        # 2️⃣ Contexto si hay palabras clave
         context_to_use = ""
         for key in CONTEXTOS:
             if key in user_question.lower():
                 context_to_use = CONTEXTOS[key]
                 break
 
-        # Limitar historial a últimas 6 interacciones
-        chat_history_text = "\n".join(req.history[-6:])
+        # 3️⃣ Limitar historial a las últimas 20 interacciones
+        chat_history_text = "\n".join(req.history[-20:])
 
-####promt
-        prompt = f"""
-Eres CapyBot solo tienes ese nombre, un asistente virtual cercano y humano.
-
-ESTADO:
-- Nombre del usuario: {nombre_usuario if nombre_usuario else "Desconocido"}
-- Saludo inicial ya ocurrió: {saludo_hecho}
-
-REGLAS IMPORTANTES:
-
+        # 4️⃣ Prompt dinámico según idioma
+        if idioma == "es":
+            reglas = f"""
 Eres CapyBot, asistente cercano y humano de Capy Ventas.
+
 Reglas:
 - Solo responde preguntas relacionadas con Capy Ventas.
-- No hables de temas ajenos.
-- Si es la primera interacción, saluda automáticamente.
-- Usa el nombre del usuario si lo conoces.
+- Saluda automáticamente si es la primera interacción.
+- Usa el nombre del usuario si lo conoces: {nombre_usuario if nombre_usuario else 'Desconocido'}
 - Responde directo, claro y conciso.
 - Usa emojis y frases cercanas.
 - Usa listas numeradas solo si la pregunta lo requiere.
 - No hables de planes o precios si no se preguntó.
 - Incita suavemente a registrarse: http://localhost/capy-ventas/pos/login
-- Si el usuario escribe en inglés, responde en inglés.
 - Ignora preguntas fuera de contexto y di: "No tengo información sobre eso".
+"""
+        else:  # inglés
+            reglas = f"""
+You are CapyBot, a friendly assistant for Capy Ventas.
 
-ESTILO:
-- conversacional
-- claro
-- natural
-- nada robótico
-- se amigable
-- cercano
-
-HISTORIAL:
-{chat_history_text}
-
-PREGUNTA:
-{user_question}
-
-CONTEXTO (si aplica):
-{context_to_use}
-
-IDIOMA:
-{idioma}
-
-RESPUESTA:
+Rules:
+- Only answer questions about Capy Ventas.
+- Automatically greet the user if this is the first interaction.
+- Use the user's name if known: {nombre_usuario if nombre_usuario else 'Unknown'}
+- Answer clearly and concisely.
+- Use emojis and friendly expressions.
+- Use numbered lists only if the question requires it.
+- Do not talk about plans or prices unless asked.
+- Gently encourage registration: http://localhost/capy-ventas/pos/login
+- Ignore unrelated questions and say: "I don't have information about that."
 """
 
+        prompt = f"""
+{reglas}
+
+History:
+{chat_history_text}
+
+Question:
+{user_question}
+
+Context:
+{context_to_use}
+
+Response:
+"""
+
+        # 5️⃣ Llamar a ChatGroq
         respuesta_obj = await asyncio.to_thread(llm.invoke, prompt)
 
         if hasattr(respuesta_obj, "content"):
@@ -132,13 +131,11 @@ RESPUESTA:
         else:
             reply_text = str(respuesta_obj).strip()
 
+        # 6️⃣ Fallback si no devuelve respuesta
         if not reply_text:
-            reply_text = "No te entendí bien, ¿me explicas un poquito más?"
-        
-        if not saludo_hecho:
-            saludo_inicial = "¡Hola! ¿Cómo te llamas?" if idioma == "es" else "Hi! What's your name?"
-            reply_text = f"{saludo_inicial}\n\n{reply_text}"
+            reply_text = "No te entendí bien, ¿me explicas un poquito más?" if idioma == "es" else "I didn't quite understand, could you explain a bit more?"
 
+        # 7️⃣ Actualizar historial
         new_history = req.history + [
             f"Usuario: {user_question}",
             f"CapyBot: {reply_text}"
@@ -154,6 +151,3 @@ RESPUESTA:
             status_code=500,
             detail=f"Ocurrió un error: {str(e)}"
         )
-
-
-## 
