@@ -58,7 +58,7 @@ async def chat(req: ChatRequest):
     try:
         user_question = req.question.strip()
         if not user_question:
-            return {"reply": "¿En qué puedo ayudarte?", "history": req.history}
+            return {"reply": "¿Cómo te llamas?", "history": req.history}
 
         # detectar el idioma
         try:
@@ -78,7 +78,7 @@ async def chat(req: ChatRequest):
                 context_to_use += value + " "
 
         # construcción de Reglas Dinámicas
-        
+
         if idioma == "es":
             instruccion_nombre = (
                 "Si no conoces el nombre del usuario, preséntate como CapyBot y pregúntale su nombre." 
