@@ -65,6 +65,9 @@ async def chat(req: ChatRequest):
         nombre_usuario = extraer_nombre(req.history)
         saludo_hecho = saludo_ya_realizado(req.history)
 
+        # Detectar idioma
+        idioma = "en" if detect(user_question) == "en" else "es"
+
         # Contexto si hay palabras clave
         context_to_use = ""
         for key in CONTEXTOS:
