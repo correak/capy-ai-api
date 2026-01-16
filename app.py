@@ -19,7 +19,7 @@ app.add_middleware(
 
 llm = ChatGroq(
     model="llama-3.1-8b-instant",
-    temperature=0.5,
+    temperature = 0.5,
     api_key=os.getenv("GROQ_API_KEY")
 )
 
@@ -89,7 +89,9 @@ ESTADO:
 - Saludo inicial ya ocurrió: {saludo_hecho}
 
 REGLAS IMPORTANTES:
-- si el saludo ya ocurrió, NO vuelvas a saludar.
+- si el saludo ya ocurrió, NO vuelvas a saludar, esto es importante.
+- No te olvides de preguntar al inicio el nombre del usuario, esto es fundamental y super importante.
+- no menciones que eres un bot cernano amigable, justo la descripción que te estoy dando.
 - si el nombre es conocido, úsalo naturalmente.
 - no repitas preguntas innecesarias.
 - responde directo a lo que el usuario pregunta.
@@ -160,3 +162,6 @@ RESPUESTA:
             status_code=500,
             detail=f"Ocurrió un error: {str(e)}"
         )
+
+
+## 
