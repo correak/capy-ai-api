@@ -61,94 +61,53 @@ async def chat(req: ChatRequest):
             return {"reply": "¿Me repites eso porfa?", "history": req.history}
 
         nombre_usuario = extraer_nombre(req.history)
-        saludo_hecho = saludo_ya_realizado(req.history)
+        
+        # detectar el idioma más flexible
+        try:
+            idioma_detectado = detect(user_question)
+        except:
+            idioma_detectado = "es"
+        
+        idioma = "en" if idioma_detectado == "en" else "es"
 
-        # 
-        idioma = "en" if detect(user_question) == "en" else "es"
-
-        # 
+        # busqueda del contexto
         context_to_use = ""
         for key in CONTEXTOS:
             if key in user_question.lower():
                 context_to_use = CONTEXTOS[key]
                 break
 
-        # 
-        chat_history_text = "\n".join(req.history[-20:])
+        chat_history_text = "\n".join(req.history[-10:])
 
-        # 
+        # aca el bot inicia el chat preguntando quien es el usuario y como se llama
         if idioma == "es":
+            instruccion_nombre = "Si no conoces el nombre del usuario, pregúntale amablemente cómo se llama." if not nombre_usuario else f"Saluda a {nombre_usuario}."
             reglas = f"""
-Eres CapyBot, asistente cercano y humano de Capy Ventas.
-
-Reglas:
-- Solo responde preguntas relacionadas con Capy Ventas.
-- Saluda automáticamente si es la primera interacción.
-- Usa el nombre del usuario si lo conoces: {nombre_usuario if nombre_usuario else 'Desconocido'}
-- Responde directo, claro y conciso.
-- Usa emojis y frases cercanas.
-- Usa listas numeradas solo si la pregunta lo requiere.
-- Si el usuario pide cambiar de idioma, hazlo inmediatamente.
-- No hables de planes o precios si no se preguntó.
-- Incita suavemente a registrarse: http://localhost/capy-ventas/pos/login
-- Ignora preguntas fuera de contexto y di: "No tengo información sobre eso".
-"""
-        else:  # inglés
-            reglas = f"""
-You are CapyBot, a friendly assistant for Capy Ventas.
-
-Rules:
-- Only answer questions about Capy Ventas.
-- Automatically greet the user if this is the first interaction.
-- Use the user's name if known: {nombre_usuario if nombre_usuario else 'Unknown'}
-- Answer clearly and concisely.
-- Use emojis and friendly expressions.
-- Use numbered lists only if the question requires it.
-- Do not talk about plans or prices unless asked.
-- Gently encourage registration: http://localhost/capy-ventas/pos/login
-- Ignore unrelated questions and say: "I don't have information about that."
-"""
-
-        prompt = f"""
-{reglas}
-
-History:
-{chat_history_text}
-
-Question:
-{user_question}
-
-Context:
-{context_to_use}
-
-Response:
-"""
-
-        # 
-        respuesta_obj = await asyncio.to_thread(llm.invoke, prompt)
-
-        if hasattr(respuesta_obj, "content"):
-            reply_text = respuesta_obj.content.strip()
+            Eres CapyBot, un asistente amigable de Capy Ventas.
+            REGLA CRÍTICA: Responde SIEMPRE en ESPAÑOL.
+            {instruccion_nombre}
+            - Solo habla de Capy Ventas.
+            - Si el contexto tiene información, úsala. Si no, usa tu conocimiento general sobre POS/Ventas.
+            - Registro: http://localhost/capy-ventas/pos/login
+            """
         else:
-            reply_text = str(respuesta_obj).strip()
+            instruccion_nombre = "If you don't know the user's name, ask for it politely." if not nombre_usuario else f"Greet {nombre_usuario}."
+            reglas = f"""
+            You are CapyBot, a friendly assistant for Capy Ventas.
+            CRITICAL RULE: Always respond in ENGLISH.
+            {instruccion_nombre}
+            - Only talk about Capy Ventas.
+            - If context is provided in another language, TRANSLATE it to English for the user.
+            - Registration: http://localhost/capy-ventas/pos/login
+            """
 
-        #
-        if not reply_text:
-            reply_text = "No te entendí bien, ¿me explicas un poquito más?" if idioma == "es" else "I didn't quite understand, could you explain a bit more?"
+        prompt = f"{reglas}\n\nHistory:\n{chat_history_text}\n\nContext:\n{context_to_use}\n\nQuestion: {user_question}\n\nResponse:"
 
-        # 
-        new_history = req.history + [
-            f"Usuario: {user_question}",
-            f"CapyBot: {reply_text}"
-        ]
+        respuesta_obj = await asyncio.to_thread(llm.invoke, prompt)
+        reply_text = respuesta_obj.content.strip()
 
-        return {
-            "reply": reply_text,
-            "history": new_history
-        }
+        new_history = req.history + [f"Usuario: {user_question}", f"CapyBot: {reply_text}"]
+        return {"reply": reply_text, "history": new_history}
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Ocurrió un error: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=str(e))
