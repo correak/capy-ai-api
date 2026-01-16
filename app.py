@@ -119,6 +119,9 @@ PREGUNTA:
 CONTEXTO (si aplica):
 {context_to_use}
 
+IDIOMA:
+{idioma}
+
 RESPUESTA:
 """
 
@@ -131,6 +134,10 @@ RESPUESTA:
 
         if not reply_text:
             reply_text = "No te entendí bien, ¿me explicas un poquito más?"
+        
+        if not saludo_hecho:
+            saludo_inicial = "¡Hola! ¿Cómo te llamas?" if idioma == "es" else "Hi! What's your name?"
+            reply_text = f"{saludo_inicial}\n\n{reply_text}"
 
         new_history = req.history + [
             f"Usuario: {user_question}",
