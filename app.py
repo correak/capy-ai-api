@@ -5,7 +5,6 @@ from langchain_groq import ChatGroq
 from langdetect import detect 
 import os
 import asyncio
-import re
 
 
 app = FastAPI()
@@ -25,11 +24,6 @@ llm = ChatGroq(
     api_key=os.getenv("GROQ_API_KEY")
 )
 
-SALUDOS = {
-    "hola", "holaa", "holaaa", "hi", "hello", "hey",
-    "buenos", "buenas", "buenos días", "buenas tardes",
-    "buenas noches", "holi" 
-}
 
 CONTEXTOS = {
     "plan": "Planes disponibles:\n- **Gratis**: funciones básicas para empezar\n- **Pro**: herramientas avanzadas para crecer",
@@ -44,27 +38,13 @@ class ChatRequest(BaseModel):
     question: str
     history: list[str] = []
 
-def extraer_nombre(texto: str):
-    texto = texto.lower().strip()
-    texto = re.sub(r"[^\w\s]", "", texto)
-
-    palabras = texto.split()
-
-    # caso: "hola", "hi", etc.
-    if len(palabras) == 1:
-        if palabras[0] in SALUDOS:
-            return None
-        return None  # ❗ ya NO aceptamos 1 palabra como nombre
-
-    # caso: "soy karen", "me llamo karen", "i'm karen"
-    if len(palabras) >= 2:
-        if palabras[0] in {"soy", "me", "im", "i"}:
-            posible = palabras[-1]
-            if posible not in SALUDOS:
-                return posible.capitalize()
-
+def extraer_nombre(history: list[str]):
+    for h in history:
+        if h.startswith("Usuario:"):
+            posible = h.replace("Usuario:", "").strip()
+            if 1 <= len(posible.split()) <= 2:
+                return posible
     return None
-
 
 def saludo_ya_realizado(history: list[str]):
     return any("Hola" in h or "Hi" in h for h in history)
@@ -80,8 +60,8 @@ async def chat(req: ChatRequest):
         if not user_question:
             return {"reply": "¿Me repites eso porfa?", "history": req.history}
 
-        nombre_usuario = extraer_nombre(user_question)
-        ##saludo_hecho = saludo_ya_realizado(req.history)
+        nombre_usuario = extraer_nombre(req.history)
+        saludo_hecho = saludo_ya_realizado(req.history)
 
         # 
         idioma = "en" if detect(user_question) == "en" else "es"
