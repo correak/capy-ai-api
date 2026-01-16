@@ -80,7 +80,7 @@ async def chat(req: ChatRequest):
         if not user_question:
             return {"reply": "¿Me repites eso porfa?", "history": req.history}
 
-        nombre_usuario = extraer_nombre(req.history)
+        nombre_usuario = extraer_nombre(user_question)
         saludo_hecho = saludo_ya_realizado(req.history)
 
         # 
