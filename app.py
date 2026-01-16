@@ -58,56 +58,86 @@ async def chat(req: ChatRequest):
     try:
         user_question = req.question.strip()
         if not user_question:
-            return {"reply": "¿Me repites eso porfa?", "history": req.history}
+            return {"reply": "¿En qué puedo ayudarte?", "history": req.history}
 
-        nombre_usuario = extraer_nombre(req.history)
-        
-        # detectar el idioma más flexible
+        # detectar el idioma
         try:
-            idioma_detectado = detect(user_question)
+            lang = detect(user_question)
         except:
-            idioma_detectado = "es"
+            lang = "es"
         
-        idioma = "en" if idioma_detectado == "en" else "es"
+        idioma = "en" if lang == "en" else "es"
 
-        # busqueda del contexto
+        # Verificar si ya tenemos el nombre
+        nombre_usuario = extraer_nombre(req.history)
+
+        # buqueda de de contexto relevante
         context_to_use = ""
-        for key in CONTEXTOS:
+        for key, value in CONTEXTOS.items():
             if key in user_question.lower():
-                context_to_use = CONTEXTOS[key]
-                break
+                context_to_use += value + " "
 
-        chat_history_text = "\n".join(req.history[-10:])
-
-        # aca el bot inicia el chat preguntando quien es el usuario y como se llama
+        # construcción de Reglas Dinámicas
+        
         if idioma == "es":
-            instruccion_nombre = "Si no conoces el nombre del usuario, pregúntale amablemente cómo se llama." if not nombre_usuario else f"Saluda a {nombre_usuario}."
+            instruccion_nombre = (
+                "Si no conoces el nombre del usuario, preséntate como CapyBot y pregúntale su nombre." 
+                if not nombre_usuario else f"Saluda a {nombre_usuario}."
+            )
             reglas = f"""
-            Eres CapyBot, un asistente amigable de Capy Ventas.
-            REGLA CRÍTICA: Responde SIEMPRE en ESPAÑOL.
+            Eres CapyBot, un asistente EXCLUSIVO de Capy Ventas.
             {instruccion_nombre}
-            - Solo habla de Capy Ventas.
-            - Si el contexto tiene información, úsala. Si no, usa tu conocimiento general sobre POS/Ventas.
-            - Registro: http://localhost/capy-ventas/pos/login
+
+            REGLAS DE ORO:
+            1. SOLO puedes responder sobre Capy Ventas (POS, inventarios, planes, precios, registro).
+            2. Si el usuario pregunta sobre CUALQUIER otro tema (la Biblia, plantas, cocina, otros softwares, etc.), debes responder exactamente: "Lo siento, como asistente de Capy Ventas, solo puedo ayudarte con temas relacionados a nuestra plataforma. ¿Tienes alguna duda sobre nuestros planes o el POS?"
+            3. Responde siempre en ESPAÑOL.
+            4. Usa emojis y sé muy breve.
+            5. Registro: http://localhost/capy-ventas/pos/login
             """
         else:
-            instruccion_nombre = "If you don't know the user's name, ask for it politely." if not nombre_usuario else f"Greet {nombre_usuario}."
+            instruccion_nombre = (
+                "If you don't know the user's name, ask for it politely." 
+                if not nombre_usuario else f"Greet {nombre_usuario}."
+            )
             reglas = f"""
-            You are CapyBot, a friendly assistant for Capy Ventas.
-            CRITICAL RULE: Always respond in ENGLISH.
+            You are CapyBot, an EXCLUSIVE assistant for Capy Ventas.
             {instruccion_nombre}
-            - Only talk about Capy Ventas.
-            - If context is provided in another language, TRANSLATE it to English for the user.
-            - Registration: http://localhost/capy-ventas/pos/login
+
+            GOLDEN RULES:
+            1. ONLY answer questions about Capy Ventas (POS, inventory, plans, pricing, registration).
+            2. If the user asks about ANY other topic (the Bible, plants, cooking, other software, etc.), you must reply: "I'm sorry, as a Capy Ventas assistant, I can only help you with topics related to our platform. Do you have any questions about our plans or the POS?"
+            3. ALWAYS respond in ENGLISH.
+            4. Use emojis and be very concise.
+            5. Registration: http://localhost/capy-ventas/pos/login
             """
+        # preparar el Prompt para el LLM
+        chat_history_text = "\n".join(req.history[-10:])
+        prompt = f"""
+        {reglas}
 
-        prompt = f"{reglas}\n\nHistory:\n{chat_history_text}\n\nContext:\n{context_to_use}\n\nQuestion: {user_question}\n\nResponse:"
+        Context information:
+        {context_to_use}
 
-        respuesta_obj = await asyncio.to_thread(llm.invoke, prompt)
-        reply_text = respuesta_obj.content.strip()
+        Chat History:
+        {chat_history_text}
 
+        User Question: {user_question}
+        
+        Assistant Response:"""
+
+        # eejecución
+        response = await asyncio.to_thread(llm.invoke, prompt)
+        reply_text = response.content.strip()
+
+        # actualizar Historial
         new_history = req.history + [f"Usuario: {user_question}", f"CapyBot: {reply_text}"]
-        return {"reply": reply_text, "history": new_history}
+
+        return {
+            "reply": reply_text,
+            "history": new_history,
+            "language_detected": idioma
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
