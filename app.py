@@ -63,20 +63,20 @@ async def chat(req: ChatRequest):
         nombre_usuario = extraer_nombre(req.history)
         saludo_hecho = saludo_ya_realizado(req.history)
 
-        # 1️⃣ Detectar idioma
+        # 
         idioma = "en" if detect(user_question) == "en" else "es"
 
-        # 2️⃣ Contexto si hay palabras clave
+        # 
         context_to_use = ""
         for key in CONTEXTOS:
             if key in user_question.lower():
                 context_to_use = CONTEXTOS[key]
                 break
 
-        # 3️⃣ Limitar historial a las últimas 20 interacciones
+        # 
         chat_history_text = "\n".join(req.history[-20:])
 
-        # 4️⃣ Prompt dinámico según idioma
+        # 
         if idioma == "es":
             reglas = f"""
 Eres CapyBot, asistente cercano y humano de Capy Ventas.
@@ -123,7 +123,7 @@ Context:
 Response:
 """
 
-        # 5️⃣ Llamar a ChatGroq
+        # 
         respuesta_obj = await asyncio.to_thread(llm.invoke, prompt)
 
         if hasattr(respuesta_obj, "content"):
@@ -131,11 +131,11 @@ Response:
         else:
             reply_text = str(respuesta_obj).strip()
 
-        # 6️⃣ Fallback si no devuelve respuesta
+        #
         if not reply_text:
             reply_text = "No te entendí bien, ¿me explicas un poquito más?" if idioma == "es" else "I didn't quite understand, could you explain a bit more?"
 
-        # 7️⃣ Actualizar historial
+        # 
         new_history = req.history + [
             f"Usuario: {user_question}",
             f"CapyBot: {reply_text}"
