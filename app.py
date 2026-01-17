@@ -82,7 +82,7 @@ async def chat(req: ChatRequest):
         5. Si el contexto está en español y el usuario habla otro idioma, TRADUCE la información.
         6. Si no conoces el nombre del usuario, pregúntaselo amablemente.
         7. 4. Usa emojis apropiadamente para hacer la conversación más amigable.
-        8. Inicia la conversación pidiendole su nombre si no lo sabes y no ha saludado antes.
+        8. Inicia la conversación pidiendole su nombre y sé muy breve.
         7. Registro: http://localhost/capy-ventas/pos/login
         """
 
