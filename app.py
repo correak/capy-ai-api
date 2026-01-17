@@ -58,43 +58,41 @@ async def chat(req: ChatRequest):
     try:
         user_question = req.question.strip()
         if not user_question:
-            return {"reply": "¿En qué puedo ayudarte?", "history": req.history}
+            return {"reply": "¡Hola! 😊 ¿Cómo te llamas?", "history": req.history}
 
-        # 
         nombre_usuario = extraer_nombre(req.history)
 
-        # 
+        # looking for context keywords
         context_to_use = ""
         for key, value in CONTEXTOS.items():
             if key in user_question.lower():
                 context_to_use += value + " "
 
-        # 
+        # role and rules for the assistant
         reglas = f"""
-        Eres CapyBot, asistente inteligente de Capy Ventas.
-        Usuario: {nombre_usuario if nombre_usuario else 'Desconocido'}
+        You are CapyBot, a friendly assistant for Capy Ventas.
+        User Name: {nombre_usuario if nombre_usuario else 'Unknown'}
 
-        REGLAS CRÍTICAS:
-        1. Responde SIEMPRE en el MISMO IDIOMA en el que el usuario te escriba (Multilingüe).
-        2. Si el usuario te pide cambiar de idioma, hazlo inmediatamente.
-        3. SOLO responde sobre Capy Ventas (POS, inventarios, planes, registro, beneficios, resultados, funcionalidad, caso de uso).
-        4. Si preguntan sobre otros temas (Biblia, plantas, etc.), responde amablemente en el idioma del usuario que solo eres un asistente de Capy Ventas.
-        5. Si el contexto está en español y el usuario habla otro idioma, TRADUCE la información.
-        7. Usa emojis y sé muy breve.
-        8. Inicia la conversación pidiendole su nombre.
-        7. Registro: http://localhost/capy-ventas/pos/login
+        STRICT RULES:
+        1. LANGUAGE: Always detect the user's language and respond in that EXACT same language. 
+        2. TRANSLATION: If the provided context is in Spanish, translate it accurately to the user's language.
+        3. SCOPE: Only answer questions about Capy Ventas (POS, inventory, plans, benefits). 
+        4. OFF-TOPIC: If the user asks about unrelated topics (Religion, plants, etc.), politely decline in their language.
+        5. NAME: If the user's name is 'Unknown', you MUST ask for their name in your response.
+        6. STYLE: Be very brief, friendly, and use emojis.
+        7. CONTEXT: Use the following information to answer: {context_to_use}
+        8. URL: http://localhost/capy-ventas/pos/login
         """
 
-        # 4. Prompt limpio
         chat_history_text = "\n".join(req.history[-10:])
-        prompt = f"""{reglas}
         
-        Contexto: {context_to_use}
-        Historial: {chat_history_text}
-        Pregunta: {user_question}
-        Respuesta:"""
+        # estructuring the prompt
+        prompt = f"""
+        SYSTEM: {reglas}
+        CHAT HISTORY: {chat_history_text}
+        USER MESSAGE: {user_question}
+        ASSISTANT RESPONSE:"""
 
-        # 5. Ejecución
         response = await asyncio.to_thread(llm.invoke, prompt)
         reply_text = response.content.strip()
 
