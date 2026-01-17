@@ -81,10 +81,7 @@ async def chat(req: ChatRequest):
         6. STYLE: Be very friendly, and use emojis.
         7. CONTEXT: Use the following information to answer: {context_to_use}
         8. URL: http://localhost/capy-ventas/pos/login
-        9. DYNAMIC LENGTH: Short for greetings, detailed but SCANNABLE for info.
-        10. SCANNABILITY: Never write long paragraphs or repetitive lists. 
-           - Use Tables to compare plans if possible.
-           - Use bold text for key features.
+        9. DYNAMIC DURATION: Abbreviation for greetings and detailed information.
         """
 
         chat_history_text = "\n".join(req.history[-10:])
