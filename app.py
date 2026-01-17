@@ -59,7 +59,7 @@ async def chat(req: ChatRequest):
         if not user_question:
             return {"reply": "¡Hola! 😊 ¿Cómo te llamas?", "history": req.history}
 
-        nombre_usuario = extraer_nombre(req.history)
+        nombre_usuario = buscar_nombre_confirmado(req.history)
 
         # looking for context keywords
         context_to_use = ""
