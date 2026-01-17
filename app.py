@@ -60,16 +60,16 @@ async def chat(req: ChatRequest):
         if not user_question:
             return {"reply": "¿En qué puedo ayudarte?", "history": req.history}
 
-        # 1. Ya no forzamos 'idioma = es/en'. Dejamos que el LLM decida.
+        # 
         nombre_usuario = extraer_nombre(req.history)
 
-        # 2. Búsqueda de contexto (se mantiene igual)
+        # 
         context_to_use = ""
         for key, value in CONTEXTOS.items():
             if key in user_question.lower():
                 context_to_use += value + " "
 
-        # 3. UN SOLO bloque de reglas que ordena responder en el idioma del usuario
+        # 
         reglas = f"""
         Eres CapyBot, asistente inteligente de Capy Ventas.
         Usuario: {nombre_usuario if nombre_usuario else 'Desconocido'}
@@ -81,6 +81,8 @@ async def chat(req: ChatRequest):
         4. Si preguntan sobre otros temas (Biblia, plantas, etc.), responde amablemente en el idioma del usuario que solo eres un asistente de Capy Ventas.
         5. Si el contexto está en español y el usuario habla otro idioma, TRADUCE la información.
         6. Si no conoces el nombre del usuario, pregúntaselo amablemente.
+        7. 4. Usa emojis apropiadamente para hacer la conversación más amigable.
+        8. Inicia la conversación pidiendole su nombre si no lo sabes y no ha saludado antes.
         7. Registro: http://localhost/capy-ventas/pos/login
         """
 
