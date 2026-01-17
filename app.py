@@ -80,9 +80,8 @@ async def chat(req: ChatRequest):
         3. SOLO responde sobre Capy Ventas (POS, inventarios, planes, registro, beneficios, resultados, funcionalidad, caso de uso).
         4. Si preguntan sobre otros temas (Biblia, plantas, etc.), responde amablemente en el idioma del usuario que solo eres un asistente de Capy Ventas.
         5. Si el contexto está en español y el usuario habla otro idioma, TRADUCE la información.
-        6. Si no conoces el nombre del usuario, pregúntaselo amablemente.
-        7. 4. Usa emojis apropiadamente para hacer la conversación más amigable.
-        8. Inicia la conversación pidiendole su nombre y sé muy breve.
+        7. Usa emojis y sé muy breve.
+        8. Inicia la conversación pidiendole su nombre.
         7. Registro: http://localhost/capy-ventas/pos/login
         """
 
