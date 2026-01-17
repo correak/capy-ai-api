@@ -38,16 +38,15 @@ class ChatRequest(BaseModel):
     question: str
     history: list[str] = []
 
-def extraer_nombre(history: list[str]):
-    for h in history:
-        if h.startswith("Usuario:"):
-            posible = h.replace("Usuario:", "").strip()
-            if 1 <= len(posible.split()) <= 2:
-                return posible
+def buscar_nombre_confirmado(history: list[str]):
+    #
+    for h in reversed(history):
+        if "CapyBot: Hola" in h and "!" in h:
+            # 
+            try:
+                return h.split("Hola ")[1].split("!")[0].strip()
+            except: continue
     return None
-
-def saludo_ya_realizado(history: list[str]):
-    return any("Hola" in h or "Hi" in h for h in history)
 
 @app.get("/")
 def home():
@@ -89,9 +88,14 @@ async def chat(req: ChatRequest):
         # estructuring the prompt
         prompt = f"""
         SYSTEM: {reglas}
-        CHAT HISTORY: {chat_history_text}
-        USER MESSAGE: {user_question}
-        ASSISTANT RESPONSE:"""
+        Current User Name: {nombre_usuario if nombre_usuario else 'Unknown'}
+        Context: {context_to_use}
+        
+        CHAT HISTORY:
+        {chat_history_text}
+        
+        USER: {user_question}
+        ASSISTANT:"""
 
         response = await asyncio.to_thread(llm.invoke, prompt)
         reply_text = response.content.strip()
